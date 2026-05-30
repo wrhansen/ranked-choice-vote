@@ -15,12 +15,15 @@ Ranked-choice voting application, originally designed for book club voting. Anon
 
 ## Development Commands
 
+All Python/Django commands must be run inside the Docker container — do not use the local Python environment.
+
 ```bash
 docker compose up                                              # start local dev server
-docker compose run web python manage.py migrate               # run migrations
-docker compose run web python manage.py createsuperuser       # create admin user
-docker compose run web python manage.py test                  # run all tests
-docker compose run web python manage.py test <app.TestClass>  # run a single test
+docker compose run --rm web python manage.py migrate          # run migrations
+docker compose run --rm web python manage.py createsuperuser  # create admin user
+docker compose run --rm web python manage.py test             # run all tests
+docker compose run --rm web python manage.py test <app.TestClass>  # run a single test
+docker compose run --rm web python manage.py shell            # Django shell
 ```
 
 ## Domain Model
