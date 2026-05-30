@@ -1,0 +1,5 @@
+{% extends "voting/base.html" %}
+{% block content %}
+<h1>{{ poll.title }}</h1>
+<p>State: {{ poll.get_state_display }}</p>
+{% endblock %}
