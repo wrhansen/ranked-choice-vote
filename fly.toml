@@ -1,0 +1,29 @@
+app = "ranked-choice-vote"
+primary_region = "ord"
+
+[build]
+
+[env]
+  PORT = "8000"
+  DATA_DIR = "/data"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[[mounts]]
+  source = "ranked_choice_data"
+  destination = "/data"

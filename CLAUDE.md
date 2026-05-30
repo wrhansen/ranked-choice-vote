@@ -39,6 +39,25 @@ Key rules:
 
 ## Architecture Notes
 
-- **No user accounts** — users are identified by IP address throughout.
+- **No user accounts** — users are identified by session key; `UserPoll` records track who has joined each poll (used for live counts and preventing double-voting).
 - **Django admin** handles all management: creating Options, setting Poll state, copying options from previous polls (excluding the winner), and generating shareable links.
-- **HTMX** drives the drag-and-drop ranking UI, live join/vote counters, and theme switching (Solarized Light/Dark, defaulting to system preference).
+- **HTMX** drives the drag-and-drop ranking UI (SortableJS), live join/vote counters (SSE via `htmx-ext-sse`), and theme switching (Solarized Light/Dark, defaulting to system preference).
+- **SSE** (`/poll/<uuid>/stream/`) streams live participant status using `StreamingHttpResponse` — no Django Channels required. Each open SSE connection holds a gunicorn worker, which is acceptable for book-club scale.
+- **Algorithms** live in `voting/algorithms/` with a registry in `__init__.py`. Adding a new algorithm means subclassing `RankedChoiceAlgorithm` and registering it — no view or model changes needed.
+
+## Deployment
+
+fly.io app: `ranked-choice-vote`. Deploys automatically on push to `main` via `.github/workflows/deploy.yml`.
+
+**First-time setup:**
+```bash
+fly launch --no-deploy          # creates app and fly.toml (already committed)
+fly volumes create ranked_choice_data --size 1 --region ord
+fly secrets set SECRET_KEY=<long-random-string>
+fly secrets set ALLOWED_HOSTS=ranked-choice-vote.fly.dev
+fly secrets set CSRF_TRUSTED_ORIGINS=https://ranked-choice-vote.fly.dev
+fly deploy
+fly ssh console -C "python manage.py createsuperuser"
+```
+
+`start.sh` runs `migrate` + `collectstatic` then starts gunicorn on every deploy. SQLite and media files live on the persistent volume at `/data`.
