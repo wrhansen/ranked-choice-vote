@@ -1,0 +1,24 @@
+<form id="vote-form"
+      hx-post="{% url 'poll-vote' poll.pk %}"
+      hx-target="#vote-form"
+      hx-swap="outerHTML">
+  {% csrf_token %}
+  <p class="vote-hint">Drag the cards to rank your choices — top is your first pick.</p>
+  <ul id="options-list" class="options-grid" style="list-style:none;padding:0">
+    {% for option in options %}
+    <li class="option-card" data-pk="{{ option.pk }}">
+      {% if option.image %}
+        <img src="{{ option.image.url }}" alt="{{ option.title }}">
+      {% else %}
+        <div class="option-no-image">📖</div>
+      {% endif %}
+      <div class="option-label">
+        <span class="rank-num">{{ forloop.counter }}</span>
+        {{ option.title }}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  <input type="hidden" id="rankings-input" name="rankings" value="">
+  <button type="submit" class="btn btn-primary">Submit Vote</button>
+</form>

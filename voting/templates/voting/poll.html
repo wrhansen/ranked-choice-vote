@@ -1,5 +1,137 @@
 {% extends "voting/base.html" %}
+{% block title %}{{ poll.title }} — Ranked Choice Vote{% endblock %}
+
 {% block content %}
-<h1>{{ poll.title }}</h1>
-<p>State: {{ poll.get_state_display }}</p>
+<div class="poll-header">
+  <h1>{{ poll.title }}</h1>
+  <div class="poll-header-meta">
+    <span class="badge badge-{{ poll.state|lower }}">{{ poll.get_state_display }}</span>
+    <span>{{ poll.get_algorithm_display }}</span>
+    {% if poll.closed_at %}<span>Closed {{ poll.closed_at|date:"N j, Y" }}</span>{% endif %}
+  </div>
+</div>
+
+{# ── NEW ──────────────────────────────────────────────────────────── #}
+{% if poll.state == "NEW" %}
+<div class="state-placeholder">
+  <p style="font-size:1.1rem">This poll hasn't started yet.</p>
+  <p style="margin-top:.5rem;font-size:.9rem">Check back once it's activated.</p>
+</div>
+
+{# ── ACTIVE ───────────────────────────────────────────────────────── #}
+{% elif poll.state == "ACTIVE" %}
+
+  {# Live participant status — updated via SSE #}
+  <div hx-ext="sse" sse-connect="{% url 'poll-stream' poll.pk %}">
+    <div id="poll-status-area" sse-swap="poll-status" hx-swap="innerHTML">
+      <div class="poll-status"><span>Loading status…</span></div>
+    </div>
+  </div>
+
+  <div id="interaction-area">
+    {% if not user_poll %}
+      <div class="join-box">
+        <h2>Join this poll</h2>
+        <form hx-post="{% url 'poll-join' poll.pk %}"
+              hx-target="#interaction-area"
+              hx-swap="innerHTML">
+          {% csrf_token %}
+          <div class="field">
+            <label for="name-input">Your name</label>
+            <input id="name-input" type="text" name="name" placeholder="e.g. Alice" required autofocus>
+          </div>
+          <button type="submit" class="btn btn-primary">Join Poll</button>
+        </form>
+      </div>
+
+    {% elif not user_poll.has_voted %}
+      {% include "voting/_voting_form.html" %}
+
+    {% else %}
+      <div class="voted-box">
+        ✓ Your vote has been submitted, {{ user_poll.name }}. Waiting for the poll to close…
+      </div>
+    {% endif %}
+  </div>
+
+{# ── CLOSED ───────────────────────────────────────────────────────── #}
+{% elif poll.state == "CLOSED" %}
+  {% if results %}
+    <div class="results-section">
+
+      <div class="winner-card">
+        {% if results.winner.image %}
+          <img src="{{ results.winner.image.url }}" alt="{{ results.winner.title }}">
+        {% endif %}
+        <div>
+          <div class="winner-label">Winner</div>
+          <div class="winner-title">{{ results.winner.title }}</div>
+        </div>
+      </div>
+
+      {% if poll.algorithm == "IRV" %}
+        <h3 style="margin-bottom:1rem">Round-by-Round Results</h3>
+        {% for round in results.summary.rounds %}
+          <p class="round-header">
+            Round {{ forloop.counter }}
+            {% if round.eliminated %}
+              — eliminated: <span class="eliminated">{{ round.eliminated.title }}</span>
+            {% endif %}
+          </p>
+          <table class="results-table" style="margin-bottom:1rem">
+            <thead><tr><th>Option</th><th>Votes</th></tr></thead>
+            <tbody>
+              {% for option, count in round.tallies %}
+              <tr {% if option.pk == results.winner.pk and forloop.parentloop.last %}class="winner-row"{% endif %}>
+                <td>{{ option.title }}</td><td>{{ count }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% endfor %}
+
+      {% elif poll.algorithm == "BORDA" %}
+        <h3 style="margin-bottom:1rem">Borda Count Scores</h3>
+        <table class="results-table">
+          <thead><tr><th>Option</th><th>Points</th></tr></thead>
+          <tbody>
+            {% for option, pts in results.summary.scores %}
+            <tr {% if option.pk == results.winner.pk %}class="winner-row"{% endif %}>
+              <td>{{ option.title }}</td><td>{{ pts }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+      {% elif poll.algorithm == "CONDORCET" %}
+        <h3 style="margin-bottom:1rem">Pairwise Comparison (prefer – against)</h3>
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th></th>
+              {% for o in results.summary.options %}<th>{{ o.title }}</th>{% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in results.summary.matrix_rows %}
+            <tr {% if row.option.pk == results.winner.pk %}class="winner-row"{% endif %}>
+              <td><strong>{{ row.option.title }}</strong></td>
+              {% for cell in row.cells %}
+                <td style="text-align:center">
+                  {% if cell %}{{ cell.prefer }}–{{ cell.against }}{% else %}—{% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+
+    </div>
+  {% else %}
+    <div class="state-placeholder">
+      <p>This poll is closed. No votes were submitted.</p>
+    </div>
+  {% endif %}
+{% endif %}
 {% endblock %}

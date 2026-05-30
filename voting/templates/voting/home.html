@@ -1,5 +1,37 @@
 {% extends "voting/base.html" %}
+{% block title %}Polls — Ranked Choice Vote{% endblock %}
+
 {% block content %}
-<h1>Polls</h1>
-{% for poll in polls %}<p>{{ poll }}</p>{% endfor %}
+<h1 style="margin-bottom:1.25rem">Polls</h1>
+
+<nav class="filter-tabs">
+  <a href="?" class="{% if not state_filter %}active{% endif %}">All</a>
+  <a href="?state=NEW"    class="{% if state_filter == 'NEW' %}active{% endif %}">New</a>
+  <a href="?state=ACTIVE" class="{% if state_filter == 'ACTIVE' %}active{% endif %}">Active</a>
+  <a href="?state=CLOSED" class="{% if state_filter == 'CLOSED' %}active{% endif %}">Closed</a>
+</nav>
+
+{% if polls %}
+<div class="poll-list">
+  {% for poll in polls %}
+  <div class="poll-card">
+    <div class="poll-card-info">
+      <h2><a href="{% url 'poll-detail' poll.pk %}">{{ poll.title }}</a></h2>
+      <div class="poll-card-meta">
+        <span class="badge badge-{{ poll.state|lower }}">{{ poll.get_state_display }}</span>
+        <span>{{ poll.get_algorithm_display }}</span>
+        <span>{{ poll.participants.count }} joined</span>
+      </div>
+    </div>
+    <a href="{% url 'poll-detail' poll.pk %}" class="btn btn-secondary btn-sm">
+      {% if poll.state == states.ACTIVE %}Vote{% elif poll.state == states.CLOSED %}Results{% else %}View{% endif %}
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="state-placeholder">
+  <p>No polls found.</p>
+</div>
+{% endif %}
 {% endblock %}

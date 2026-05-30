@@ -1,1 +1,4 @@
-<p>Joined as {{ user_poll.name }}</p>
+<p style="margin-bottom:1.25rem;font-weight:500;color:var(--sol-cyan)">
+  ✓ You've joined as <strong>{{ user_poll.name }}</strong>
+</p>
+{% include "voting/_voting_form.html" %}

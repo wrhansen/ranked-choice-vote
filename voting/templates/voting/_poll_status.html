@@ -1,1 +1,9 @@
-<p>{{ joined_count }} joined &bull; {{ voted_count }} voted</p>
+<div class="poll-status">
+  <span><span class="stat">{{ joined_count }}</span> joined</span>
+  <span><span class="stat">{{ voted_count }}</span> voted</span>
+  {% if participants %}
+  <span class="names">
+    {% for p in participants %}{{ p.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+  </span>
+  {% endif %}
+</div>

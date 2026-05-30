@@ -46,6 +46,20 @@ def poll_detail(request, pk):
     results = None
     if poll.state == Poll.State.CLOSED and poll.votes.exists():
         results = poll.compute_results()
+        # Pre-build template-friendly matrix rows for Condorcet results
+        if poll.algorithm == Poll.Algorithm.CONDORCET and results:
+            opts = results["summary"]["options"]
+            matrix = results["summary"]["matrix"]
+            results["summary"]["matrix_rows"] = [
+                {
+                    "option": opt_i,
+                    "cells": [
+                        None if opt_i.pk == opt_j.pk else matrix[opt_i.pk][opt_j.pk]
+                        for opt_j in opts
+                    ],
+                }
+                for opt_i in opts
+            ]
 
     return render(request, "voting/poll.html", {
         "poll": poll,
