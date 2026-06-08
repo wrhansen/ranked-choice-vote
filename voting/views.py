@@ -31,11 +31,10 @@ def home(request):
     polls = Poll.objects.all()
     if state_filter in Poll.State.values:
         polls = polls.filter(state=state_filter)
-    return render(request, "voting/home.html", {
-        "polls": polls,
-        "state_filter": state_filter,
-        "states": Poll.State,
-    })
+    context = {"polls": polls, "state_filter": state_filter, "states": Poll.State}
+    if request.headers.get("HX-Request"):
+        return render(request, "voting/_polls_content.html", context)
+    return render(request, "voting/home.html", context)
 
 
 @require_GET
@@ -61,12 +60,15 @@ def poll_detail(request, pk):
                 for opt_i in opts
             ]
 
-    return render(request, "voting/poll.html", {
+    context = {
         "poll": poll,
         "user_poll": user_poll,
         "options": poll.options.order_by("order"),
         "results": results,
-    })
+    }
+    if request.headers.get("HX-Request"):
+        return render(request, "voting/_poll_detail.html", context)
+    return render(request, "voting/poll.html", context)
 
 
 @require_POST
@@ -160,6 +162,7 @@ def poll_stream(request, pk):
             yield f"event: poll-status\n{data_lines}\n\n"
 
             if current_poll.state == Poll.State.CLOSED:
+                yield "event: poll-closed\ndata: \n\n"
                 break
 
             time.sleep(2)
