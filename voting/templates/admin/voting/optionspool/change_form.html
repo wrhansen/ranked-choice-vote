@@ -1,0 +1,20 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block after_related_objects %}
+{{ block.super }}
+{% if original.pk %}
+<div style="margin: 20px 0;">
+  <h2 style="font-size: 13px; font-weight: bold; margin-bottom: 8px;">Bulk Image Upload</h2>
+  <div id="image-dropzone"
+       style="border: 2px dashed #ccc; border-radius: 6px; padding: 30px; text-align: center;
+              color: #666; font-size: 14px; cursor: pointer; transition: border-color .2s, background .2s;"
+       data-upload-url="{% url 'admin:optionspool_upload' original.pk %}">
+    <p style="margin: 0 0 6px;">Drag &amp; drop image files here to add options in bulk</p>
+    <p style="margin: 0; font-size: 12px; color: #999;">Each image becomes one option — filename (without extension) is used as the title</p>
+  </div>
+  <div id="upload-status" style="margin-top: 8px; font-size: 13px;"></div>
+</div>
+<script src="{% static 'voting/admin_pool_upload.js' %}"></script>
+{% endif %}
+{% endblock %}

@@ -1,9 +1,13 @@
+import os
+
 from django.contrib import admin, messages
-from django.urls import reverse
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html, mark_safe
 
-from .models import Option, Poll, UserPoll, Vote
+from .models import Option, OptionsPool, Poll, UserPoll, Vote
 
 
 class OptionInline(admin.StackedInline):
@@ -19,13 +23,64 @@ class OptionInline(admin.StackedInline):
     image_preview.short_description = "Preview"
 
 
+@admin.register(OptionsPool)
+class OptionsPoolAdmin(admin.ModelAdmin):
+    list_display = ["name", "option_count", "created_at"]
+    readonly_fields = ["created_at"]
+    fields = ["name", "created_at"]
+    inlines = [OptionInline]
+    actions = ["copy_pool"]
+
+    @admin.display(description="Options")
+    def option_count(self, obj):
+        return obj.options.count()
+
+    @admin.action(description="Copy selected pools")
+    def copy_pool(self, request, queryset):
+        for pool in queryset:
+            new_pool = OptionsPool.objects.create(name=f"{pool.name} (copy)")
+            for opt in pool.options.all():
+                Option.objects.create(
+                    pool=new_pool,
+                    title=opt.title,
+                    image=opt.image.name if opt.image else "",
+                    order=opt.order,
+                )
+        self.message_user(request, f"Copied {queryset.count()} pool(s).")
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                "<int:pool_id>/upload/",
+                self.admin_site.admin_view(self.upload_images),
+                name="optionspool_upload",
+            ),
+        ]
+        return custom + urls
+
+    def upload_images(self, request, pool_id):
+        if request.method != "POST":
+            return JsonResponse({"error": "POST required"}, status=405)
+        pool = get_object_or_404(OptionsPool, pk=pool_id)
+        created = []
+        for f in request.FILES.getlist("images"):
+            title = os.path.splitext(f.name)[0]
+            opt = Option(pool=pool, title=title, order=pool.options.count())
+            opt.image.save(f.name, f, save=True)
+            created.append({"id": opt.pk, "title": opt.title})
+        return JsonResponse({"created": created})
+
+
 @admin.register(Poll)
 class PollAdmin(admin.ModelAdmin):
     list_display = ["title", "state", "algorithm", "created_at", "participant_count", "voted_count"]
     readonly_fields = ["id", "created_at", "closed_at", "share_link", "results_display"]
-    fields = ["title", "state", "algorithm", "share_link", "id", "created_at", "closed_at", "results_display"]
-    inlines = [OptionInline]
-    actions = ["activate_poll", "close_poll", "copy_options_from_previous"]
+    fields = [
+        "title", "state", "algorithm", "options_pool",
+        "share_link", "id", "created_at", "closed_at", "results_display",
+    ]
+    actions = ["activate_poll", "close_poll"]
 
     # ------------------------------------------------------------------ #
     # list_display helpers                                                 #
@@ -47,7 +102,7 @@ class PollAdmin(admin.ModelAdmin):
     def share_link(self, obj):
         if not obj.pk:
             return "Save the poll first to get a share link."
-        path = reverse("poll-detail", args=[obj.pk])
+        path_val = reverse("poll-detail", args=[obj.pk])
         uid = str(obj.pk).replace("-", "")[:12]
         return format_html(
             '<input id="share-{uid}" value="{path}" readonly style="width:380px;font-family:monospace;">'
@@ -58,7 +113,7 @@ class PollAdmin(admin.ModelAdmin):
             "this.textContent='Copied!';"
             '">Copy Link</button>',
             uid=uid,
-            path=path,
+            path=path_val,
         )
 
     # ------------------------------------------------------------------ #
@@ -137,45 +192,6 @@ class PollAdmin(admin.ModelAdmin):
             closed_at=timezone.now(),
         )
         self.message_user(request, f"{updated} poll(s) closed.")
-
-    @admin.action(description="Copy options from most recent closed poll (excluding winner)")
-    def copy_options_from_previous(self, request, queryset):
-        previous = (
-            Poll.objects.filter(state=Poll.State.CLOSED)
-            .exclude(pk__in=queryset.values_list("pk", flat=True))
-            .order_by("-closed_at")
-            .first()
-        )
-
-        if not previous:
-            self.message_user(request, "No previous closed poll found.", level=messages.WARNING)
-            return
-
-        if not previous.votes.exists():
-            self.message_user(
-                request,
-                f"'{previous}' has no votes — cannot determine winner to exclude.",
-                level=messages.WARNING,
-            )
-            return
-
-        results = previous.compute_results()
-        winner = results["winner"]
-        options_to_copy = previous.options.exclude(pk=winner.pk)
-
-        for target_poll in queryset:
-            for opt in options_to_copy:
-                Option.objects.get_or_create(
-                    poll=target_poll,
-                    title=opt.title,
-                    defaults={"image": opt.image.name if opt.image else "", "order": opt.order},
-                )
-
-        self.message_user(
-            request,
-            f"Copied {options_to_copy.count()} option(s) from '{previous}' "
-            f"(excluded winner: {winner.title}) to {queryset.count()} poll(s).",
-        )
 
 
 @admin.register(UserPoll)

@@ -172,7 +172,8 @@ main {
 }
 
 .poll-card-info h2 { font-size: 1.1rem; margin-bottom: .25rem; }
-.poll-card-meta { font-size: .85rem; color: var(--fg-dim); display: flex; gap: .75rem; margin-top: .35rem; }
+.poll-card-meta { font-size: .85rem; color: var(--fg-dim); display: flex; align-items: center; gap: .375rem; margin-top: .35rem; }
+.poll-card-meta > span + span::before { content: "·"; margin-right: .375rem; opacity: .85; }
 
 /* ── State badges ──────────────────────────────────────────────────── */
 .badge {
@@ -379,6 +380,30 @@ main {
   padding: 2rem;
   text-align: center;
   color: var(--fg-dim);
+}
+
+/* ── Pool-based voting layout ──────────────────────────────────────── */
+.ballot-section { margin-bottom: 1.5rem; }
+.ballot-section-title { font-size: 1rem; font-weight: 600; color: var(--fg-em); margin-bottom: .5rem; }
+
+#pool-list .rank-num { display: none; }
+
+.ballot-zone {
+  min-height: 120px;
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  padding: .5rem;
+}
+.ballot-zone:not(:has([data-pk])) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ballot-zone:not(:has([data-pk]))::before {
+  content: "Drag options here to rank them";
+  color: var(--fg-dim);
+  font-size: .875rem;
+  pointer-events: none;
 }
 
 /* ── Alerts ────────────────────────────────────────────────────────── */

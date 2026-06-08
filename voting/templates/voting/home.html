@@ -21,6 +21,7 @@
         <span class="badge badge-{{ poll.state|lower }}">{{ poll.get_state_display }}</span>
         <span>{{ poll.get_algorithm_display }}</span>
         <span>{{ poll.participants.count }} joined</span>
+        <span>Updated {{ poll.updated_at|date:"N j, Y, g:i a" }}</span>
       </div>
     </div>
     <a href="{% url 'poll-detail' poll.pk %}" class="btn btn-secondary btn-sm">

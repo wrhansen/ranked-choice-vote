@@ -42,26 +42,30 @@
 
     /* Init or re-init SortableJS after any HTMX swap */
     function initSortable() {
-      var el = document.getElementById('options-list');
-      if (!el || el._sortable) return;
-      el._sortable = Sortable.create(el, {
-        animation: 150,
-        onEnd: updateRankings,
-      });
+      var ranked = document.getElementById('options-list');
+      var pool   = document.getElementById('pool-list');
+      if (ranked && !ranked._sortable) {
+        ranked._sortable = Sortable.create(ranked, { group: 'voting', animation: 150, onEnd: updateRankings });
+      }
+      if (pool && !pool._sortable) {
+        pool._sortable = Sortable.create(pool, { group: 'voting', animation: 150, onEnd: updateRankings });
+      }
       updateRankings();
     }
 
     function updateRankings() {
-      var el    = document.getElementById('options-list');
-      var input = document.getElementById('rankings-input');
-      if (!el || !input) return;
-      var ids = Array.from(el.querySelectorAll('[data-pk]'))
-                     .map(function (n) { return parseInt(n.dataset.pk, 10); });
+      var ranked = document.getElementById('options-list');
+      var input  = document.getElementById('rankings-input');
+      var btn    = document.getElementById('submit-vote');
+      if (!input) return;
+      var ids = ranked
+        ? Array.from(ranked.querySelectorAll('[data-pk]')).map(function (n) { return parseInt(n.dataset.pk, 10); })
+        : [];
       input.value = JSON.stringify(ids);
-      /* Refresh rank number badges */
-      el.querySelectorAll('.rank-num').forEach(function (badge, i) {
-        badge.textContent = i + 1;
-      });
+      if (ranked) {
+        ranked.querySelectorAll('.rank-num').forEach(function (badge, i) { badge.textContent = i + 1; });
+      }
+      if (btn) btn.disabled = ids.length === 0;
     }
 
     document.addEventListener('DOMContentLoaded', initSortable);
