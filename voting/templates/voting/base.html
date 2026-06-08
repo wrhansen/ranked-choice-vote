@@ -57,6 +57,7 @@
       var ranked = document.getElementById('options-list');
       var input  = document.getElementById('rankings-input');
       var btn    = document.getElementById('submit-vote');
+      var btnTop = document.getElementById('submit-vote-top');
       if (!input) return;
       var ids = ranked
         ? Array.from(ranked.querySelectorAll('[data-pk]')).map(function (n) { return parseInt(n.dataset.pk, 10); })
@@ -66,6 +67,7 @@
         ranked.querySelectorAll('.rank-num').forEach(function (badge, i) { badge.textContent = i + 1; });
       }
       if (btn) btn.disabled = ids.length === 0;
+      if (btnTop) btnTop.disabled = ids.length === 0;
     }
 
     document.addEventListener('DOMContentLoaded', initSortable);
