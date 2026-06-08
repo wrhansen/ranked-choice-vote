@@ -9,6 +9,12 @@
 
 {# ── NEW ──────────────────────────────────────────────────────────── #}
 {% if poll.state == "NEW" %}
+<div hx-ext="sse" sse-connect="{% url 'poll-stream' poll.pk %}">
+  <span hx-trigger="sse:poll-activated"
+        hx-get="{% url 'poll-detail' poll.pk %}"
+        hx-target="#main-content"
+        hx-swap="innerHTML"></span>
+</div>
 <div class="state-placeholder">
   <p style="font-size:1.1rem">This poll hasn't started yet.</p>
   <p style="margin-top:.5rem;font-size:.9rem">Check back once it's activated.</p>

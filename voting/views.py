@@ -181,10 +181,20 @@ def poll_stream(request, pk):
     poll = get_object_or_404(Poll, pk=pk)
 
     def event_stream():
+        prev_state = poll.state
         while True:
             try:
                 current_poll = Poll.objects.prefetch_related("participants").get(pk=pk)
             except Poll.DoesNotExist:
+                break
+
+            if current_poll.state == Poll.State.NEW:
+                yield ": ping\n\n"  # keepalive; triggers no client event
+                time.sleep(2)
+                continue
+
+            if prev_state == Poll.State.NEW and current_poll.state == Poll.State.ACTIVE:
+                yield "event: poll-activated\ndata: \n\n"
                 break
 
             participants = list(current_poll.participants.order_by("joined_at"))
@@ -206,6 +216,7 @@ def poll_stream(request, pk):
                 yield "event: poll-closed\ndata: \n\n"
                 break
 
+            prev_state = current_poll.state
             time.sleep(2)
 
     response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
