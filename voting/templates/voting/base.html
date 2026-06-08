@@ -24,6 +24,13 @@
     {% block content %}{% endblock %}
   </main>
 
+  <div id="card-overlay" class="card-overlay" aria-modal="true" role="dialog">
+    <div class="card-overlay-content">
+      <div id="overlay-img-wrap"></div>
+      <p id="overlay-title" class="card-overlay-title"></p>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"></script>
   <script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
@@ -44,11 +51,20 @@
     function initSortable() {
       var ranked = document.getElementById('options-list');
       var pool   = document.getElementById('pool-list');
+      var sortableOpts = {
+        group: 'voting',
+        animation: 150,
+        onEnd: updateRankings,
+        scroll: true,
+        scrollSensitivity: 80,
+        scrollSpeed: 12,
+        forceAutoScrollFallback: true,
+      };
       if (ranked && !ranked._sortable) {
-        ranked._sortable = Sortable.create(ranked, { group: 'voting', animation: 150, onEnd: updateRankings });
+        ranked._sortable = Sortable.create(ranked, sortableOpts);
       }
       if (pool && !pool._sortable) {
-        pool._sortable = Sortable.create(pool, { group: 'voting', animation: 150, onEnd: updateRankings });
+        pool._sortable = Sortable.create(pool, sortableOpts);
       }
       updateRankings();
     }
@@ -72,6 +88,51 @@
 
     document.addEventListener('DOMContentLoaded', initSortable);
     document.addEventListener('htmx:afterSwap', initSortable);
+
+    /* Card overlay — show full image + title on click; ignore drag gestures */
+    var _dragMoved = false, _dragStartX, _dragStartY;
+    document.addEventListener('mousedown', function (e) {
+      if (e.target.closest('.option-card')) {
+        _dragMoved = false;
+        _dragStartX = e.clientX;
+        _dragStartY = e.clientY;
+      }
+    });
+    document.addEventListener('mousemove', function (e) {
+      if (e.buttons && _dragStartX !== undefined) {
+        if (Math.abs(e.clientX - _dragStartX) > 5 || Math.abs(e.clientY - _dragStartY) > 5) {
+          _dragMoved = true;
+        }
+      }
+    });
+    document.addEventListener('click', function (e) {
+      var card = e.target.closest('.option-card');
+      if (!card || _dragMoved) return;
+
+      var imgEl   = card.querySelector('img');
+      var noImg   = card.querySelector('.option-no-image');
+      var label   = card.querySelector('.option-label');
+      var rankNum = card.querySelector('.rank-num');
+      var title   = label ? label.textContent.replace(rankNum ? rankNum.textContent : '', '').trim() : '';
+
+      var wrap = document.getElementById('overlay-img-wrap');
+      wrap.innerHTML = imgEl
+        ? '<img src="' + imgEl.src + '" alt="' + title + '">'
+        : '<div class="card-overlay-no-image">' + (noImg ? noImg.textContent : '') + '</div>';
+
+      document.getElementById('overlay-title').textContent = title;
+      document.getElementById('card-overlay').classList.add('active');
+    });
+
+    document.getElementById('card-overlay').addEventListener('click', function (e) {
+      if (!e.target.closest('.card-overlay-content')) {
+        this.classList.remove('active');
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') document.getElementById('card-overlay').classList.remove('active');
+    });
 
     /* Send CSRF token on every HTMX request, not just form submissions */
     document.body.addEventListener('htmx:configRequest', function (evt) {
