@@ -72,6 +72,11 @@
 
     document.addEventListener('DOMContentLoaded', initSortable);
     document.addEventListener('htmx:afterSwap', initSortable);
+
+    /* Send CSRF token on every HTMX request, not just form submissions */
+    document.body.addEventListener('htmx:configRequest', function (evt) {
+      evt.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
+    });
   </script>
   {% block scripts %}{% endblock %}
 </body>

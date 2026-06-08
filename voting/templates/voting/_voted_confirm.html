@@ -1,3 +1,10 @@
-<div id="vote-form" class="voted-box">
-  ✓ Your vote has been submitted, {{ user_poll.name }}. Waiting for the poll to close…
+<div id="vote-form">
+  <div class="voted-box">
+    ✓ Your vote has been submitted, {{ user_poll.name }}. Waiting for the poll to close…
+  </div>
+  <button hx-post="{% url 'poll-vote-amend' poll.pk %}"
+          hx-target="#interaction-area"
+          hx-swap="innerHTML"
+          class="btn btn-secondary btn-sm"
+          style="margin-top:.75rem">Amend Vote</button>
 </div>

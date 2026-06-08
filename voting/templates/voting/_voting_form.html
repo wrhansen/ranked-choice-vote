@@ -7,16 +7,8 @@
   <div class="ballot-section">
     <h3 class="ballot-section-title">Your Rankings</h3>
     <p class="vote-hint">Drag options here from the pool below — top is your first pick. Anything left in the pool won't be included in your vote.</p>
-    <ul id="options-list" class="options-grid ballot-zone" style="list-style:none;padding:0"></ul>
-  </div>
-
-  <button id="submit-vote-top" type="submit" class="btn btn-primary" disabled style="margin-bottom:1.5rem">Submit Vote</button>
-
-  <div class="ballot-section">
-    <h3 class="ballot-section-title">Available Options</h3>
-    <p class="vote-hint">Drag any of these into your rankings above, or leave them out.</p>
-    <ul id="pool-list" class="options-grid" style="list-style:none;padding:0">
-      {% for option in options %}
+    <ul id="options-list" class="options-grid ballot-zone" style="list-style:none;padding:0">
+      {% for option in ranked_options %}
       <li class="option-card" data-pk="{{ option.pk }}">
         {% if option.image %}
           <img src="{{ option.image.url }}" alt="{{ option.title }}">
@@ -32,6 +24,28 @@
     </ul>
   </div>
 
+  <button id="submit-vote-top" type="submit" class="btn btn-primary" style="margin-bottom:1.5rem" {% if not ranked_options %}disabled{% endif %}>Submit Vote</button>
+
+  <div class="ballot-section">
+    <h3 class="ballot-section-title">Available Options</h3>
+    <p class="vote-hint">Drag any of these into your rankings above, or leave them out.</p>
+    <ul id="pool-list" class="options-grid" style="list-style:none;padding:0">
+      {% for option in pool_options %}
+      <li class="option-card" data-pk="{{ option.pk }}">
+        {% if option.image %}
+          <img src="{{ option.image.url }}" alt="{{ option.title }}">
+        {% else %}
+          <div class="option-no-image">📖</div>
+        {% endif %}
+        <div class="option-label">
+          <span class="rank-num"></span>
+          {{ option.title }}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
   <input type="hidden" id="rankings-input" name="rankings" value="">
-  <button id="submit-vote" type="submit" class="btn btn-primary" disabled>Submit Vote</button>
+  <button id="submit-vote" type="submit" class="btn btn-primary" {% if not ranked_options %}disabled{% endif %}>Submit Vote</button>
 </form>

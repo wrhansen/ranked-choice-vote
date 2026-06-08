@@ -25,6 +25,17 @@ def _get_user_poll(request, poll):
     ).first()
 
 
+def _voting_form_context(poll, ranked_options=None, pool_options=None):
+    """Build ranked_options / pool_options for the voting form template."""
+    all_options = list(poll.options.order_by("order"))
+    if ranked_options is None:
+        ranked_options = []
+    if pool_options is None:
+        ranked_pks = {opt.pk for opt in ranked_options}
+        pool_options = [o for o in all_options if o.pk not in ranked_pks]
+    return {"ranked_options": ranked_options, "pool_options": pool_options}
+
+
 @require_GET
 def home(request):
     state_filter = request.GET.get("state", "")
@@ -45,7 +56,6 @@ def poll_detail(request, pk):
     results = None
     if poll.state == Poll.State.CLOSED and poll.votes.exists():
         results = poll.compute_results()
-        # Pre-build template-friendly matrix rows for Condorcet results
         if poll.algorithm == Poll.Algorithm.CONDORCET and results:
             opts = results["summary"]["options"]
             matrix = results["summary"]["matrix"]
@@ -63,8 +73,8 @@ def poll_detail(request, pk):
     context = {
         "poll": poll,
         "user_poll": user_poll,
-        "options": poll.options.order_by("order"),
         "results": results,
+        **_voting_form_context(poll),
     }
     if request.headers.get("HX-Request"):
         return render(request, "voting/_poll_detail.html", context)
@@ -97,7 +107,7 @@ def join(request, pk):
     return render(request, "voting/_join_confirm.html", {
         "poll": poll,
         "user_poll": user_poll,
-        "options": poll.options.order_by("order"),
+        **_voting_form_context(poll),
     })
 
 
@@ -133,6 +143,37 @@ def vote(request, pk):
     user_poll.save(update_fields=["has_voted"])
 
     return render(request, "voting/_voted_confirm.html", {"poll": poll, "user_poll": user_poll})
+
+
+@require_POST
+def vote_amend(request, pk):
+    poll = get_object_or_404(Poll, pk=pk)
+
+    if poll.state != Poll.State.ACTIVE:
+        return HttpResponseBadRequest("Poll is not active.")
+
+    user_poll = _get_user_poll(request, poll)
+    if not user_poll:
+        return HttpResponseBadRequest("You have not joined this poll.")
+
+    if not user_poll.has_voted:
+        return HttpResponseBadRequest("You have not voted yet.")
+
+    existing_vote = Vote.objects.filter(user_poll=user_poll).first()
+    existing_rankings = existing_vote.rankings if existing_vote else []
+    existing_vote.delete()
+
+    user_poll.has_voted = False
+    user_poll.save(update_fields=["has_voted"])
+
+    options_by_pk = {opt.pk: opt for opt in poll.options.all()}
+    ranked_options = [options_by_pk[pk] for pk in existing_rankings if pk in options_by_pk]
+
+    return render(request, "voting/_voting_form.html", {
+        "poll": poll,
+        "user_poll": user_poll,
+        **_voting_form_context(poll, ranked_options=ranked_options),
+    })
 
 
 @require_GET
