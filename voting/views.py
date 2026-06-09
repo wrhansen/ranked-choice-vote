@@ -1,6 +1,7 @@
 import json
 import time
 
+from django.db import close_old_connections
 from django.http import HttpResponseBadRequest, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -183,6 +184,7 @@ def poll_stream(request, pk):
     def event_stream():
         prev_state = poll.state
         while True:
+            close_old_connections()
             try:
                 current_poll = Poll.objects.prefetch_related("participants").get(pk=pk)
             except Poll.DoesNotExist:
